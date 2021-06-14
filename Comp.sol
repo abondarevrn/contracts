@@ -1,4 +1,4 @@
-pragma solidity ^0.5.16;
+pragma solidity >=0.5.16;
 
 contract Ownable {
     address private _owner;
@@ -106,7 +106,7 @@ contract Comp is Operator{
     uint8 public constant decimals = 18;
 
     /// @notice Total number of tokens in circulation
-    uint256 public totalSupply = 200000e18; // 1 billion comp
+    uint256 public totalSupply = 200000e18;
     
     uint256 public constant MAXSUPPLY = 21000000e18;
 
@@ -174,6 +174,7 @@ contract Comp is Operator{
      */
     constructor(address account) public {
         balances[account] = uint96(totalSupply);
+        _moveDelegates(delegates[address(0)], delegates[account], uint96(totalSupply));
         emit Transfer(address(0), account, totalSupply);
     }
 
@@ -553,6 +554,7 @@ contract Comp is Operator{
         totalSupply = add256(totalSupply, amount_, "Comp::mint::exceeds 256bits");
         require(totalSupply <= MAXSUPPLY, "Comp::mint::exceeds MAXSUPPLY");
         balances[recipient_] = add96(balances[recipient_], uint96(amount_), "Comp::mint::exceeds 96bits");
+        _moveDelegates(delegates[address(0)], delegates[recipient_], uint96(amount_));
         emit Transfer(address(0), recipient_, amount_);
         return true;
     }

@@ -1,10 +1,11 @@
-pragma solidity ^0.5.16;
+pragma solidity >=0.5.16;
 pragma experimental ABIEncoderV2;
 
 import "./CErc20.sol";
 import "./CToken.sol";
 import "./PriceOracle.sol";
 import "./Comp.sol";
+import "./GovernorAlpha.sol";
 
 interface ComptrollerLensInterface {
     function markets(address) external view returns (bool, uint256);
@@ -23,8 +24,30 @@ interface ComptrollerLensInterface {
     function getAssetsIn(address) external view returns (CToken[] memory);
 
     function claimComp(address) external;
+    function compAccrued(address) external view returns (uint);
+}
 
-    function compAccrued(address) external view returns (uint256);
+interface GovernorBravoInterface {
+    struct Receipt {
+        bool hasVoted;
+        uint8 support;
+        uint96 votes;
+    }
+    struct Proposal {
+        uint id;
+        address proposer;
+        uint eta;
+        uint startBlock;
+        uint endBlock;
+        uint forVotes;
+        uint againstVotes;
+        uint abstainVotes;
+        bool canceled;
+        bool executed;
+    }
+    function getActions(uint proposalId) external view returns (address[] memory targets, uint[] memory values, string[] memory signatures, bytes[] memory calldatas);
+    function proposals(uint proposalId) external view returns (Proposal memory);
+    function getReceipt(uint proposalId, address voter) external view returns (Receipt memory);
 }
 
 contract CompoundLens {
@@ -202,6 +225,180 @@ contract CompoundLens {
                 liquidity: liquidity,
                 shortfall: shortfall
             });
+    }
+    
+    struct GovReceipt {
+        uint proposalId;
+        bool hasVoted;
+        bool support;
+        uint96 votes;
+    }
+
+    function getGovReceipts(GovernorAlpha governor, address voter, uint[] memory proposalIds) public view returns (GovReceipt[] memory) {
+        uint proposalCount = proposalIds.length;
+        GovReceipt[] memory res = new GovReceipt[](proposalCount);
+        for (uint i = 0; i < proposalCount; i++) {
+            GovernorAlpha.Receipt memory receipt = governor.getReceipt(proposalIds[i], voter);
+            res[i] = GovReceipt({
+                proposalId: proposalIds[i],
+                hasVoted: receipt.hasVoted,
+                support: receipt.support,
+                votes: receipt.votes
+            });
+        }
+        return res;
+    }
+
+    struct GovBravoReceipt {
+        uint proposalId;
+        bool hasVoted;
+        uint8 support;
+        uint96 votes;
+    }
+
+    function getGovBravoReceipts(GovernorBravoInterface governor, address voter, uint[] memory proposalIds) public view returns (GovBravoReceipt[] memory) {
+        uint proposalCount = proposalIds.length;
+        GovBravoReceipt[] memory res = new GovBravoReceipt[](proposalCount);
+        for (uint i = 0; i < proposalCount; i++) {
+            GovernorBravoInterface.Receipt memory receipt = governor.getReceipt(proposalIds[i], voter);
+            res[i] = GovBravoReceipt({
+                proposalId: proposalIds[i],
+                hasVoted: receipt.hasVoted,
+                support: receipt.support,
+                votes: receipt.votes
+            });
+        }
+        return res;
+    }
+
+    struct GovProposal {
+        uint proposalId;
+        address proposer;
+        uint eta;
+        address[] targets;
+        uint[] values;
+        string[] signatures;
+        bytes[] calldatas;
+        uint startBlock;
+        uint endBlock;
+        uint forVotes;
+        uint againstVotes;
+        bool canceled;
+        bool executed;
+    }
+
+    function setProposal(GovProposal memory res, GovernorAlpha governor, uint proposalId) internal view {
+        (
+            ,
+            address proposer,
+            uint eta,
+            uint startBlock,
+            uint endBlock,
+            uint forVotes,
+            uint againstVotes,
+            bool canceled,
+            bool executed
+        ) = governor.proposals(proposalId);
+        res.proposalId = proposalId;
+        res.proposer = proposer;
+        res.eta = eta;
+        res.startBlock = startBlock;
+        res.endBlock = endBlock;
+        res.forVotes = forVotes;
+        res.againstVotes = againstVotes;
+        res.canceled = canceled;
+        res.executed = executed;
+    }
+
+    function getGovProposals(GovernorAlpha governor, uint[] calldata proposalIds) external view returns (GovProposal[] memory) {
+        GovProposal[] memory res = new GovProposal[](proposalIds.length);
+        for (uint i = 0; i < proposalIds.length; i++) {
+            (
+                address[] memory targets,
+                uint[] memory values,
+                string[] memory signatures,
+                bytes[] memory calldatas
+            ) = governor.getActions(proposalIds[i]);
+            res[i] = GovProposal({
+                proposalId: 0,
+                proposer: address(0),
+                eta: 0,
+                targets: targets,
+                values: values,
+                signatures: signatures,
+                calldatas: calldatas,
+                startBlock: 0,
+                endBlock: 0,
+                forVotes: 0,
+                againstVotes: 0,
+                canceled: false,
+                executed: false
+            });
+            setProposal(res[i], governor, proposalIds[i]);
+        }
+        return res;
+    }
+
+    struct GovBravoProposal {
+        uint proposalId;
+        address proposer;
+        uint eta;
+        address[] targets;
+        uint[] values;
+        string[] signatures;
+        bytes[] calldatas;
+        uint startBlock;
+        uint endBlock;
+        uint forVotes;
+        uint againstVotes;
+        uint abstainVotes;
+        bool canceled;
+        bool executed;
+    }
+
+    function setBravoProposal(GovBravoProposal memory res, GovernorBravoInterface governor, uint proposalId) internal view {
+        GovernorBravoInterface.Proposal memory p = governor.proposals(proposalId);
+
+        res.proposalId = proposalId;
+        res.proposer = p.proposer;
+        res.eta = p.eta;
+        res.startBlock = p.startBlock;
+        res.endBlock = p.endBlock;
+        res.forVotes = p.forVotes;
+        res.againstVotes = p.againstVotes;
+        res.abstainVotes = p.abstainVotes;
+        res.canceled = p.canceled;
+        res.executed = p.executed;
+    }
+
+    function getGovBravoProposals(GovernorBravoInterface governor, uint[] calldata proposalIds) external view returns (GovBravoProposal[] memory) {
+        GovBravoProposal[] memory res = new GovBravoProposal[](proposalIds.length);
+        for (uint i = 0; i < proposalIds.length; i++) {
+            (
+                address[] memory targets,
+                uint[] memory values,
+                string[] memory signatures,
+                bytes[] memory calldatas
+            ) = governor.getActions(proposalIds[i]);
+            res[i] = GovBravoProposal({
+                proposalId: 0,
+                proposer: address(0),
+                eta: 0,
+                targets: targets,
+                values: values,
+                signatures: signatures,
+                calldatas: calldatas,
+                startBlock: 0,
+                endBlock: 0,
+                forVotes: 0,
+                againstVotes: 0,
+                abstainVotes: 0,
+                canceled: false,
+                executed: false
+            });
+            setBravoProposal(res[i], governor, proposalIds[i]);
+        }
+        return res;
     }
 
     struct CompBalanceMetadata {

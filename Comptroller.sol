@@ -1,4 +1,4 @@
-pragma solidity ^0.5.16;
+pragma solidity >=0.5.16;
 
 import "./Unitroller.sol";
 import "./Comp.sol";
@@ -146,8 +146,8 @@ contract Comptroller is
      * @param cTokens The list of addresses of the cToken markets to be enabled
      * @return Success indicator for whether each corresponding market was entered
      */
-    function enterMarkets(address[] memory cTokens)
-        public
+    function enterMarkets(address[] calldata cTokens)
+        external
         returns (uint256[] memory)
     {
         uint256 len = cTokens.length;
@@ -179,7 +179,7 @@ contract Comptroller is
             return Error.MARKET_NOT_LISTED;
         }
 
-        if (marketToJoin.accountMembership[borrower] == true) {
+        if (marketToJoin.accountMembership[borrower]) {
             // already joined
             return Error.NO_ERROR;
         }
@@ -324,9 +324,9 @@ contract Comptroller is
         mintTokens;
 
         // Shh - we don't ever want this hook to be marked pure
-        if (false) {
-            maxAssets = maxAssets;
-        }
+        // if (false) {
+        //     maxAssets = maxAssets;
+        // }
     }
 
     /**
@@ -484,9 +484,9 @@ contract Comptroller is
         borrowAmount;
 
         // Shh - we don't ever want this hook to be marked pure
-        if (false) {
-            maxAssets = maxAssets;
-        }
+        // if (false) {
+        //     maxAssets = maxAssets;
+        // }
     }
 
     /**
@@ -542,9 +542,9 @@ contract Comptroller is
         borrowerIndex;
 
         // Shh - we don't ever want this hook to be marked pure
-        if (false) {
-            maxAssets = maxAssets;
-        }
+        // if (false) {
+        //     maxAssets = maxAssets;
+        // }
     }
 
     /**
@@ -625,9 +625,9 @@ contract Comptroller is
         seizeTokens;
 
         // Shh - we don't ever want this hook to be marked pure
-        if (false) {
-            maxAssets = maxAssets;
-        }
+        // if (false) {
+        //     maxAssets = maxAssets;
+        // }
     }
 
     /**
@@ -696,9 +696,9 @@ contract Comptroller is
         seizeTokens;
 
         // Shh - we don't ever want this hook to be marked pure
-        if (false) {
-            maxAssets = maxAssets;
-        }
+        // if (false) {
+        //     maxAssets = maxAssets;
+        // }
     }
 
     /**
@@ -753,9 +753,9 @@ contract Comptroller is
         transferTokens;
 
         // Shh - we don't ever want this hook to be marked pure
-        if (false) {
-            maxAssets = maxAssets;
-        }
+        // if (false) {
+        //     maxAssets = maxAssets;
+        // }
     }
 
     /*** Liquidity/Liquidation Calculations ***/
@@ -785,7 +785,7 @@ contract Comptroller is
      *          account shortfall below collateral requirements)
      */
     function getAccountLiquidity(address account)
-        public
+        external
         view
         returns (
             uint256,
@@ -834,7 +834,7 @@ contract Comptroller is
         uint256 redeemTokens,
         uint256 borrowAmount
     )
-        public
+        external
         view
         returns (
             uint256,
@@ -1054,7 +1054,7 @@ contract Comptroller is
      * @dev Admin function to set a new price oracle
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
-    function _setPriceOracle(PriceOracle newOracle) public returns (uint256) {
+    function _setPriceOracle(PriceOracle newOracle) external returns (uint256) {
         // Check caller is admin
         if (msg.sender != admin) {
             return
@@ -1293,7 +1293,7 @@ contract Comptroller is
                 );
         }
 
-        cToken.isCToken(); // Sanity check to make sure its really a CToken
+        require(cToken.isCToken(), "not cToken"); // Sanity check to make sure its really a CToken
 
         markets[address(cToken)] = Market({
             isListed: true,
@@ -1321,7 +1321,7 @@ contract Comptroller is
      * @return uint 0=success, otherwise a failure. (See enum Error for details)
      */
     function _setPauseGuardian(address newPauseGuardian)
-        public
+        external
         returns (uint256)
     {
         if (msg.sender != admin) {
@@ -1344,7 +1344,7 @@ contract Comptroller is
         return uint256(Error.NO_ERROR);
     }
 
-    function _setMintPaused(CToken cToken, bool state) public returns (bool) {
+    function _setMintPaused(CToken cToken, bool state) external returns (bool) {
         require(
             markets[address(cToken)].isListed,
             "cannot pause a market that is not listed"
@@ -1353,14 +1353,14 @@ contract Comptroller is
             msg.sender == pauseGuardian || msg.sender == admin,
             "only pause guardian and admin can pause"
         );
-        require(msg.sender == admin || state == true, "only admin can unpause");
+        require(msg.sender == admin || state, "only admin can unpause");
 
         mintGuardianPaused[address(cToken)] = state;
         emit ActionPaused(cToken, "Mint", state);
         return state;
     }
 
-    function _setBorrowPaused(CToken cToken, bool state) public returns (bool) {
+    function _setBorrowPaused(CToken cToken, bool state) external returns (bool) {
         require(
             markets[address(cToken)].isListed,
             "cannot pause a market that is not listed"
@@ -1369,31 +1369,31 @@ contract Comptroller is
             msg.sender == pauseGuardian || msg.sender == admin,
             "only pause guardian and admin can pause"
         );
-        require(msg.sender == admin || state == true, "only admin can unpause");
+        require(msg.sender == admin || state, "only admin can unpause");
 
         borrowGuardianPaused[address(cToken)] = state;
         emit ActionPaused(cToken, "Borrow", state);
         return state;
     }
 
-    function _setTransferPaused(bool state) public returns (bool) {
+    function _setTransferPaused(bool state) external returns (bool) {
         require(
             msg.sender == pauseGuardian || msg.sender == admin,
             "only pause guardian and admin can pause"
         );
-        require(msg.sender == admin || state == true, "only admin can unpause");
+        require(msg.sender == admin || state, "only admin can unpause");
 
         transferGuardianPaused = state;
         emit ActionPaused("Transfer", state);
         return state;
     }
 
-    function _setSeizePaused(bool state) public returns (bool) {
+    function _setSeizePaused(bool state) external returns (bool) {
         require(
             msg.sender == pauseGuardian || msg.sender == admin,
             "only pause guardian and admin can pause"
         );
-        require(msg.sender == admin || state == true, "only admin can unpause");
+        require(msg.sender == admin || state, "only admin can unpause");
 
         seizeGuardianPaused = state;
         emit ActionPaused("Seize", state);
@@ -1423,7 +1423,7 @@ contract Comptroller is
     /**
      * @notice Recalculate and update COMP speeds for all COMP markets
      */
-    function refreshCompSpeeds() public {
+    function refreshCompSpeeds() external {
         require(
             msg.sender == tx.origin,
             "only externally owned accounts may refresh speeds"
@@ -1634,7 +1634,7 @@ contract Comptroller is
      * @notice Claim all the comp accrued by holder in all markets
      * @param holder The address to claim COMP for
      */
-    function claimComp(address holder) public {
+    function claimComp(address holder) external {
         return claimComp(holder, allMarkets);
     }
 
@@ -1665,7 +1665,7 @@ contract Comptroller is
         for (uint256 i = 0; i < cTokens.length; i++) {
             CToken cToken = cTokens[i];
             require(markets[address(cToken)].isListed, "market must be listed");
-            if (borrowers == true) {
+            if (borrowers) {
                 Exp memory borrowIndex = Exp({mantissa: cToken.borrowIndex()});
                 updateCompBorrowIndex(address(cToken), borrowIndex);
                 for (uint256 j = 0; j < holders.length; j++) {
@@ -1677,7 +1677,7 @@ contract Comptroller is
                     );
                 }
             }
-            if (suppliers == true) {
+            if (suppliers) {
                 updateCompSupplyIndex(address(cToken));
                 for (uint256 j = 0; j < holders.length; j++) {
                     distributeSupplierComp(address(cToken), holders[j], true);
@@ -1692,7 +1692,7 @@ contract Comptroller is
      * @notice Set the amount of COMP distributed per block
      * @param compRate_ The amount of COMP wei per block to distribute
      */
-    function _setCompRate(uint256 compRate_) public {
+    function _setCompRate(uint256 compRate_) external {
         require(adminOrInitializing(), "only admin can change comp rate");
 
         uint256 oldRate = compRate;
@@ -1706,7 +1706,7 @@ contract Comptroller is
      * @notice Add markets to compMarkets, allowing them to earn COMP in the flywheel
      * @param cTokens The addresses of the markets to add
      */
-    function _addCompMarkets(address[] memory cTokens) public {
+    function _addCompMarkets(address[] calldata cTokens) external {
         require(adminOrInitializing(), "only admin can add comp market");
 
         for (uint256 i = 0; i < cTokens.length; i++) {
@@ -1718,8 +1718,8 @@ contract Comptroller is
 
     function _addCompMarketInternal(address cToken) internal {
         Market storage market = markets[cToken];
-        require(market.isListed == true, "comp market is not listed");
-        require(market.isComped == false, "comp market already added");
+        require(market.isListed, "comp market is not listed");
+        require(market.isComped, "comp market already added");
 
         market.isComped = true;
         emit MarketComped(CToken(cToken), true);
@@ -1749,11 +1749,11 @@ contract Comptroller is
      * @notice Remove a market from compMarkets, preventing it from earning COMP in the flywheel
      * @param cToken The address of the market to drop
      */
-    function _dropCompMarket(address cToken) public {
+    function _dropCompMarket(address cToken) external {
         require(msg.sender == admin, "only admin can drop comp market");
 
         Market storage market = markets[cToken];
-        require(market.isComped == true, "market is not a comp market");
+        require(market.isComped, "market is not a comp market");
 
         market.isComped = false;
         emit MarketComped(CToken(cToken), false);
@@ -1766,7 +1766,7 @@ contract Comptroller is
      * @dev The automatic getter may be used to access an individual market.
      * @return The list of market addresses
      */
-    function getAllMarkets() public view returns (CToken[] memory) {
+    function getAllMarkets() external view returns (CToken[] memory) {
         return allMarkets;
     }
 
@@ -1778,7 +1778,7 @@ contract Comptroller is
      * @notice Return the address of the COMP token
      * @return The address of COMP
      */
-    function getCompAddress() public view returns (address) {
+    function getCompAddress() public pure returns (address) {
         return 0xda8F20bf431d04a3661250F922D75e2bBE0B001C;
     }
 }

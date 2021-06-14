@@ -1,6 +1,6 @@
 // File: contracts/InterestRateModel.sol
 
-pragma solidity ^0.5.16;
+pragma solidity >=0.5.16;
 
 /**
  * @title Compound's InterestRateModel Interface

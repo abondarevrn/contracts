@@ -1,4 +1,4 @@
-pragma solidity ^0.5.16;
+pragma solidity >=0.5.16;
 
 import "interfaces/ComptrollerInterface.sol";
 import "interfaces/InterestRateModel.sol";
@@ -327,7 +327,7 @@ contract CErc20Delegator is
      * @return The calculated balance
      */
     function borrowBalanceStored(address account)
-        public
+        external
         view
         returns (uint256)
     {
@@ -339,7 +339,7 @@ contract CErc20Delegator is
      * @notice Accrue interest then return the up-to-date exchange rate
      * @return Calculated exchange rate scaled by 1e18
      */
-    function exchangeRateCurrent() public returns (uint256) {
+    function exchangeRateCurrent() external returns (uint256) {
         delegateAndReturn();
     }
 
@@ -348,7 +348,7 @@ contract CErc20Delegator is
      * @dev This function does not accrue interest before calculating the exchange rate
      * @return Calculated exchange rate scaled by 1e18
      */
-    function exchangeRateStored() public view returns (uint256) {
+    function exchangeRateStored() external view returns (uint256) {
         delegateToViewAndReturn();
     }
 
@@ -365,7 +365,7 @@ contract CErc20Delegator is
      * @dev This calculates interest accrued from the last checkpointed block
      *      up to the current block and writes new checkpoint to storage.
      */
-    function accrueInterest() public returns (uint256) {
+    function accrueInterest() external returns (uint256) {
         delegateAndReturn();
     }
 
@@ -411,7 +411,7 @@ contract CErc20Delegator is
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function _setComptroller(ComptrollerInterface newComptroller)
-        public
+        external
         returns (uint256)
     {
         newComptroller; // Shh
@@ -514,8 +514,8 @@ contract CErc20Delegator is
      * @param data The raw data to delegatecall
      * @return The returned bytes from the delegatecall
      */
-    function delegateToViewImplementation(bytes memory data)
-        public
+    function delegateToViewImplementation(bytes calldata data)
+        external
         view
         returns (bytes memory)
     {
